@@ -20,6 +20,10 @@ public class PhotoGalleryFragment extends Fragment {
     private static final String TAG = PhotoGalleryFragment.class.getSimpleName();
     private RecyclerView mRecyclerView;
     private List<GalleryItem> mGalleryItems = new ArrayList<>();
+    private GridLayoutManager mGridLayoutManager;
+    private EndlessScrollListener mScrollListener;
+    private PhotoAdapter mPhotoAdapter;
+    private int offset=0;
 
     public static Fragment newInstance() {
         return new PhotoGalleryFragment();
@@ -29,7 +33,7 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        new FetchItemsTask().execute();
+        new FetchItemsTask().execute(offset);
     }
 
     @Nullable
@@ -38,15 +42,30 @@ public class PhotoGalleryFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mRecyclerView = view.findViewById(R.id.recycler_view);
-        mRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
+        mGridLayoutManager = new GridLayoutManager(getActivity(),3);
+        mRecyclerView.setLayoutManager(mGridLayoutManager);
+
+        // Retain an instance so that you can call `resetState()` for fresh searches
+        mScrollListener = new EndlessScrollListener(mGridLayoutManager) {
+            @Override
+            public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
+                // Triggered only when new data needs to be appended to the list
+                // Add whatever code is needed to append new items to the bottom of the list
+                new FetchItemsTask().execute(page);
+
+            }
+        };
 
         setUpAdapter();
+        mRecyclerView.addOnScrollListener(mScrollListener);
         return view;
     }
 
     private void setUpAdapter() {
         if (isAdded()) {
-            mRecyclerView.setAdapter(new PhotoAdapter(mGalleryItems));
+            mPhotoAdapter = new PhotoAdapter(mGalleryItems);
+            mRecyclerView.setAdapter(mPhotoAdapter);
+
         }
     }
 
@@ -66,7 +85,7 @@ public class PhotoGalleryFragment extends Fragment {
     private class PhotoAdapter extends RecyclerView.Adapter<PhotoHolder> {
         private List<GalleryItem> mGalleryItems;
 
-        public PhotoAdapter(List<GalleryItem> galleryItems) {
+      public PhotoAdapter(List<GalleryItem> galleryItems) {
             mGalleryItems = galleryItems;
         }
 
@@ -86,19 +105,24 @@ public class PhotoGalleryFragment extends Fragment {
         public int getItemCount() {
             return mGalleryItems.size();
         }
+
     }
 
-    private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
+    private class FetchItemsTask extends AsyncTask<Integer, Void, List<GalleryItem>> {
 
         @Override
-        protected List<GalleryItem> doInBackground(Void... voids) {
+        protected List<GalleryItem> doInBackground(Integer... params) {
 
-            return new FlickrFetcher().fetchItems();
+            return new FlickrFetcher().fetchItems(params[0]);
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem> galleryItems) {
+            if(mGalleryItems!=null){
+                mGalleryItems.addAll(galleryItems);
+            }else{
             mGalleryItems = galleryItems;
+            }
             setUpAdapter();
         }
     }

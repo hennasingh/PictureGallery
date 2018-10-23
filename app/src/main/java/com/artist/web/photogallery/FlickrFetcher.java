@@ -22,8 +22,6 @@ public class FlickrFetcher {
 
     private static final String TAG = FlickrFetcher.class.getSimpleName();
 
-    private static final String API_KEY = BuildConfig.API_KEY;
-
     public byte[] getUrlBytes(String urlSpec) throws IOException {
 
         URL url = new URL(urlSpec);
@@ -54,17 +52,18 @@ public class FlickrFetcher {
         return new String(getUrlBytes(urlSpec));
     }
 
-    public List<GalleryItem> fetchItems() {
+    public List<GalleryItem> fetchItems(int offset) {
 
         List<GalleryItem> galleryItems = new ArrayList<>();
         try {
-            String url = Uri.parse("https://api.flickr.com/services/rest/")
+            String url = Uri.parse(Constants.BASE_URL)
                     .buildUpon()
-                    .appendQueryParameter("method", "flickr.photos.getRecent")
-                    .appendQueryParameter("api_key", API_KEY)
+                    .appendQueryParameter("method", Constants.METHOD)
+                    .appendQueryParameter("api_key", Constants.API_KEY)
                     .appendQueryParameter("format", "json")
                     .appendQueryParameter("nojsoncallback", "1")
                     .appendQueryParameter("extras", "url_s")
+                    .appendQueryParameter("page",String.valueOf(offset))
                     .build().toString();
             String jsonString = getUrlString(url);
             Log.i(TAG, "Received JSON: " + jsonString);
